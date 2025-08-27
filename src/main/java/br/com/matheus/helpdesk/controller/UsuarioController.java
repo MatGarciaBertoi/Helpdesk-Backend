@@ -49,6 +49,13 @@ public class UsuarioController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
         }
     }
+    
+    // Novo endpoint para retornar o usuário logado
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public UsuarioResponseDTO getMe() {
+        return usuarioService.getMe();
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -60,7 +67,6 @@ public class UsuarioController {
         }
     }
 
-    // --- MÉTODO DELETAR ATUALIZADO COM O NOVO TRATAMENTO DE ERRO ---
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -68,10 +74,8 @@ public class UsuarioController {
         try {
             usuarioService.deletarUsuario(id);
         } catch (IllegalStateException ex) {
-            // Retorna 400 Bad Request se a regra de negócio for violada
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
         } catch (RuntimeException ex) {
-            // Retorna 404 Not Found se o usuário não existir
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage());
         }
     }

@@ -7,11 +7,13 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import br.com.matheus.helpdesk.dto.UsuarioCreateDTO;
 import br.com.matheus.helpdesk.dto.UsuarioResponseDTO;
@@ -30,8 +32,9 @@ public class UsuarioService implements UserDetailsService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private TicketRepository ticketRepository; // Injeção do repositório de tickets
+    private TicketRepository ticketRepository;
 
+    @Transactional
     public UsuarioResponseDTO criarUsuario(UsuarioCreateDTO usuarioDTO) {
         Usuario novoUsuario = new Usuario();
         novoUsuario.setNome(usuarioDTO.getNome());
@@ -43,6 +46,7 @@ public class UsuarioService implements UserDetailsService {
         return new UsuarioResponseDTO(usuarioSalvo);
     }
 
+    @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarTodos() {
         return usuarioRepository.findAll()
                 .stream()
@@ -50,12 +54,14 @@ public class UsuarioService implements UserDetailsService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public UsuarioResponseDTO buscarPorId(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado!"));
         return new UsuarioResponseDTO(usuario);
     }
 
+    @Transactional
     public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioUpdateDTO usuarioUpdateDTO) {
         Usuario usuarioExistente = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado!"));
@@ -71,21 +77,24 @@ public class UsuarioService implements UserDetailsService {
         return new UsuarioResponseDTO(usuarioAtualizado);
     }
 
-    // --- MÉTODO DELETAR ATUALIZADO COM A NOVA REGRA DE NEGÓCIO ---
+    @Transactional
     public void deletarUsuario(Long id) {
-        // 1. Verifica se o usuário existe
         if (!usuarioRepository.existsById(id)) {
             throw new RuntimeException("Usuário não encontrado!");
         }
-
-        // 2. Verifica se o usuário tem tickets associados (seja como cliente ou técnico)
         int ticketCount = ticketRepository.countByClienteIdOrTecnicoId(id, id);
         if (ticketCount > 0) {
             throw new IllegalStateException("Não é possível deletar o usuário, pois ele possui " + ticketCount + " ticket(s) associado(s).");
         }
-        
-        // 3. Se estiver tudo certo, deleta o usuário
         usuarioRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponseDTO getMe() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário autenticado não encontrado no banco de dados"));
+        return new UsuarioResponseDTO(usuario);
     }
 
     @Override

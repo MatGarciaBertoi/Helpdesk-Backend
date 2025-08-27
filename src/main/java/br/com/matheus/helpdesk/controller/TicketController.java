@@ -39,6 +39,13 @@ public class TicketController {
         return ticketService.listarTodosDTO();
     }
 
+    // --- NOSSO NOVO ENDPOINT PARA O CLIENTE ---
+    @GetMapping("/meus-tickets")
+    @PreAuthorize("hasRole('CLIENTE')")
+    public List<TicketResponseDTO> listarMeusTickets() {
+        return ticketService.listarMeusTickets();
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TECNICO', 'ADMINISTRADOR') or @ticketService.isOwner(authentication.name, #id)")
     public TicketResponseDTO buscarPorId(@PathVariable Long id) {

@@ -69,7 +69,7 @@ public class TicketService {
     }
 
     @Transactional
-    public Ticket atualizarTicket(Long id, TicketUpdateDTO ticketUpdateDTO) {
+    public TicketResponseDTO atualizarTicketDTO(Long id, TicketUpdateDTO ticketUpdateDTO) {
         Ticket ticketExistente = buscarPorId(id);
 
         if (ticketExistente.getStatus() == Ticket.Status.FECHADO) {
@@ -87,13 +87,7 @@ public class TicketService {
                 ticketExistente.setDataFechamento(LocalDateTime.now());
             }
         }
-        return ticketRepository.save(ticketExistente);
-    }
-    
-    // Novo método que retorna o DTO para o controller
-    @Transactional
-    public TicketResponseDTO atualizarTicketDTO(Long id, TicketUpdateDTO ticketUpdateDTO) {
-        Ticket ticketAtualizado = atualizarTicket(id, ticketUpdateDTO);
+        Ticket ticketAtualizado = ticketRepository.save(ticketExistente);
         return new TicketResponseDTO(ticketAtualizado);
     }
 
@@ -153,5 +147,18 @@ public class TicketService {
         ticket.setStatus(Ticket.Status.EM_ANDAMENTO);
 
         return ticketRepository.save(ticket);
+    }
+    
+    // --- NOSSO NOVO MÉTODO PARA BUSCAR TICKETS DO CLIENTE ---
+    @Transactional(readOnly = true)
+    public List<TicketResponseDTO> listarMeusTickets() {
+        String emailUsuarioLogado = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario cliente = usuarioRepository.findByEmail(emailUsuarioLogado)
+                .orElseThrow(() -> new RuntimeException("Cliente não encontrado!"));
+
+        return ticketRepository.findByClienteId(cliente.getId())
+                .stream()
+                .map(TicketResponseDTO::new)
+                .collect(Collectors.toList());
     }
 }
